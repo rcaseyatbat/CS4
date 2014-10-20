@@ -1,0 +1,178 @@
+#lang racket
+
+;; ---------------------
+;; CS 4 final exam code.
+;; ---------------------
+
+;;
+;; Rules for jumping:
+;; -- no color can jump over an empty square
+;; -- any color can jump over a square with the same color, clearing the square
+;; -- any primary color can jump over a square with another (possibly different) 
+;;    primary color, clearing the square
+;; -- a primary color can jump over a secondary color containing that primary color,
+;;    removing that color from the secondary color to make a primary color
+;;
+;; Rules for landing:
+;; -- any color can land on an empty square, which gets that color
+;; -- any color can land on a square of its own color, which is unchanged
+;; -- a primary color can land on a square with a (possibly different) primary color;
+;;    the square gets the merge of the two primary colors
+;;
+
+;;
+;; Part 0: External helper functions supplied to the students.
+;;
+
+;; This is useful when writing incomplete versions of code, so that the
+;; code can actually run.
+(define (unimplemented) (error "unimplemented"))
+
+(define (print s)
+  (display s)
+  (newline))
+
+;; Return #t if x is in the list lst.
+(define (member? x lst)
+  (list? (memq x lst)))
+
+;; Choose a random element from a list.
+(define (random-element list)
+  (list-ref list (random (length list))))
+
+;; Choose a random color.
+(define (random-color)
+  (random-element '(r y b o g p)))
+
+;; Return #t if the argument is a valid color symbol.
+(define (is-valid-color? c)
+  (member? c '(r y b o g p e)))
+
+;; Return #t if the argument is a valid primary color symbol.
+(define (is-primary-color? c)
+  (member? c '(r y b)))
+
+;; Return #t if the argument is a valid direction symbol.
+(define (is-valid-direction? d)
+  (member? d '(n s e w ne nw se sw)))
+
+;; Check that the number of arguments for a message is correct.
+;; Example: (check-args args 1 "make-square 'jump-ok?")
+(define (check-args args n label)
+  (if (not (= (length args) n))
+      (error (string-append label ": incorrect number of arguments"))
+      (void)))
+
+;;
+;; Part 1: Square object implementation.  Worth 8 points.
+;;
+
+(define (make-square)
+  ;; Helper functions can go here.
+  
+  ;; Stored data.
+  (let ((color 0))   ;; TODO
+    
+    ;; Helper functions can go here too.
+    
+    ;; The message-passing object.
+    (lambda (op . args)
+      (cond ((eq? op 'debug)  ;; TODO
+             (print color))
+            ((eq? op 'randomize) 
+              (random-color))
+            (else (error "unknown operation: " op))))))
+
+
+;;
+;; Part 2: Board object implementation.  Worth 7 points.
+;;
+
+(define (make-board nrows ncols)
+  ;; Helper functions can go here.
+  
+  ;; This function is supplied to the students:
+  (define (print-board board)
+    (define (print-columns i)
+      (if (= i ncols)
+          (void)
+          (begin
+            (display i)
+            (display " ")
+            (print-columns (+ i 1)))))
+    (define (iter r c)
+      (cond ((= r nrows) (void))
+            ((= c ncols)
+             (newline)
+             (iter (+ r 1) 0))
+            (else
+             (if (= c 0)
+                 (begin
+                   (display r)
+                   (display " | "))
+                 (display " "))
+             (let ((color ((get-square board r c) 'color)))
+               (if (eq? color 'e) ;; empty square
+                   (display ".")
+                   (display color)))
+             (iter r (+ c 1)))))
+    (newline)
+    (display "    ")
+    (print-columns 0)
+    (newline)
+    (print (string-append "  +" (make-string (* ncols 2) #\-)))
+    (iter 0 0)
+    (newline))
+  
+  ;; The message-passing object itself.
+  (if (or (<= nrows 0) (<= ncols 0))
+      (error "make-board: invalid dimensions: " nrows ncols)
+      (let ((...))  ;; TODO
+        (lambda (op . args)
+          (cond ((eq? op ...) ;; TODO
+                 ...)
+                ...
+                (else (error "unknown operation: " op)))))))
+
+;;
+;; Part 3: Game object implementation.  Supplied to the students.
+;;
+
+(define (make-game nrows ncols)
+  (define (valid-read? lst)
+    (if (and (list? lst) (= (length lst) 3))
+        (let ((row (car lst))
+              (col (cadr lst))
+              (dir (caddr lst)))
+          (if (and (integer? row) (integer? col) (symbol? dir))
+              (and (in-range row col) (is-valid-direction? dir))
+              #f))
+        #f))
+  
+  (define (interact! board)
+    (board 'print)
+    (display "Enter a (row column direction): ")
+    (let ((vals (read)))
+      (cond ((eq? vals 'quit) (void))
+            ((eq? vals 'reset) 
+             (board 'reset!)
+             (interact! board))
+            ((not (valid-read? vals))
+             (print "Invalid input; please try again!")
+             (interact! board))
+            (else
+             (let ((row (car vals))
+                   (col (cadr vals))
+                   (dir (caddr vals)))
+               (if (not (board 'can-jump? row col dir))
+                   (print "Invalid jump; please try again!")
+                   (board 'jump! row col dir))
+               (interact! board))))))
+  
+  (let ((board (make-board nrows ncols)))
+    (interact! board)))
+
+(make-game 5 6)
+
+
+

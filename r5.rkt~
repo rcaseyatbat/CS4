@@ -1,0 +1,12 @@
+
+#lang r5rs
+(define (append! lst1 lst2)
+  (define (join lst1 lst2) ;; helper function
+     (if (null? (cdr lst1)) ;; lst1 has one cons pair
+         (set-cdr! lst1 lst2)  ;; change cdr
+         (join (cdr lst1) lst2))) ;; look for last pair
+  (cond ((null? lst1) lst2) ;; base cases
+        ((null? lst2) lst1)
+        (else
+          (join lst1 lst2) ;; change cdr
+          lst1))) ;; return beginning of list

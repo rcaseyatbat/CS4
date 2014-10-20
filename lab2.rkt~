@@ -1,0 +1,392 @@
+#lang racket
+(require htdp/testing)
+
+;; Ryan Casey
+;; csman username: rcasey
+
+;; Part A: Orders of growth
+
+;; Exercise A.1
+  (define (fib n)
+    (if (< n 2)
+        n
+        (+ (fib (- n 1)) (fib (- n 2)))))
+;; If Scheme uses applicative-order evaluation, the largest number of pending 
+;; operations is n.  In applicative-order evaluation, each of the arguments 
+;; are evaluated and then then operation is applied.  In this case, fib(- n 1) 
+;; is evaluated before fib(- n 2) is and then "+" operation is applied.  
+;; Therefore, we will calculate fib(- n 1) first, and then we will clear the 
+;; memory.  This will keep happening until we get to fib(1) = 0, so the maximum 
+;; length of this path is n.  Then, the memory can be cleared (the pending
+;; operations can be cleared) as we calculate fib(- n 2) in the same way.  So at 
+;; most, there are only n pending operations of fib.
+;; -> Space Complexity: O(n)
+;; Note that this is less that the exponential time complexity of O(2^n), since 
+;; we are allowed to go down a path to get to fib(1) and then erase all the 
+;; pending operations, whereas we can't do that for time, and each operation 
+;; continues to add to the time required.
+  
+;; Exercise A.2
+(define (cube x) (* x x x))
+(define (p x) (- (* 3 x) (* 4 (cube x))))
+(define (sine angle)
+   (if (not (> (abs angle) 0.1))
+       angle
+       (p (sine (/ angle 3.0)))))
+;; part (a)
+;; evaluate (sine 12.15)
+;; first, return (p (sine (/ 12.15 3)))
+;;   -> (p (sine (4.05))
+;; second, we must evaluate (sine 4.05)
+;;   return (p (sine (/ 4.05 3)))
+;; ...
+;; so, p will be called however many times it takes 12.15/3 to get less than 
+;; 0.1, divinding by 3 each time.
+;; Note that 12.15/81 = 0.15 still calls p, but 12.15/243 = 0.05 is within 
+;; the tolerance so it will just return the angle.  Thus, we had to divide 
+;; by 3 a total of 5 times, (3^5 = 243), so p will be called 5 times.
+
+;; part (b)
+;; Time Complexity: O(log(a)), since we are dividing by 3 everytime we do the 
+;; recursive call for the sin function.  In general, if we divide the input by 
+;; 3 for the recurisve call, the time complexity is log(a) (with base 3). Then 
+;; we have to evaluate p a number of times equal to log(a), but both p(x) and 
+;; cube(x) are O(1) complexity, so the overall time complexity is log(a)*1*1 = 
+;; log(a)
+;; Space Complexity: O(log(a)) since the largest number of pending operations 
+;; depeends on the number of times that sine gets called recursively, which is 
+;; at maximum at the number of times it takes to divide a by 3 to get a number 
+;; smaller than 0.1.  Both p(x) and cube(x) are constant in space, as they 
+;; simply require a constant amount of space, so there space complexities are 
+;; O(1).The sine function gets called at most log(a) times (base 3), since we
+;; are divinding the input a by 3 everytime.
+
+;; Exercise A.3
+(define (square n) (* n n))
+(define (expt b n)
+  (iter-expt b n 1))
+
+(define (iter-expt b n a) ;; note state variable = a * b^n
+   (cond ((= n 0) a)
+         ((even? n) (iter-expt (square b) (/ n 2) a)) ;; if even, use definition
+         (else (iter-expt  b (- n 1) (* a b))))) ;; if odd, reduce to (n-1), 
+                                                   ;; but multiply be extra b
+;; checks for even/odd b, n = 0, b = 0
+(check-expect (expt 3 4) 81)
+(check-expect (expt 6 3) 216)
+(check-expect (expt 10 0) 1)
+(check-expect (expt 0 10) 0)
+
+;; Exercise A.4
+;; This function takes two integers a,b and returns a*b without any 
+;; multiplication operations.  Note that both the space and time complexities
+;; are O(log(b)) since we are dividing by 2 each time during the recursive
+;; process.
+(define (fast-mult a b)
+  (cond ((= b 1) a)
+        ((= b -1) (- 0 a)) ;; returns -a if b is -1.
+        ((= b 0) 0)
+        ((even? b) (fast-mult (double a) (halve b)))
+        (else (+ a (fast-mult a (- b 1)))))) ;; not that "+" makes it recursive
+
+;; helper function that doubles an input integer
+(define (double a)
+  (* 2 a))
+;; helper function that returns half the value of an (even) input integer.
+(define (halve a)
+  (/ a 2))
+
+;; checks for even/odd b, negative integers as well as multiplying by 0.
+(check-expect (fast-mult 9 8) 72)
+(check-expect (fast-mult 5 3) 15)
+(check-expect (fast-mult 10 0) 0)
+(check-expect (fast-mult 9 -8) -72)
+
+;; Exercise A.5
+;; Iterative process for multipying two positive integers a and b.  Since we 
+;; divide b by 2 each time that b is even, time complexity is O(log(n)).
+(define (i-mult a b)
+   (iter-mult a b 0))
+
+(define (iter-mult a b n) ;; note: state variable = a*b + n
+   (cond ((= 0 b) n)
+         ((even? b) (iter-mult (double a) (halve b) n))
+         (else (iter-mult a (- b 1) (+ a n))))) ;; if odd, add one "a" in.
+
+(check-expect (i-mult 9 8) 72)
+(check-expect (i-mult 5 3) 15)
+(check-expect (i-mult 10 0) 0)
+
+;; Exercise A.6
+  (define (foo f n)
+    (if (<= n 1)
+        (f 0)
+        (+ (foo f (/ n 2)) (foo f (/ n 2)))))
+;; Given that f is O(1) in both time and space, foo is recursively called
+;; with the given input n being divided by 2 each time, therefore it has
+;; both space and time complexity of O(log(n)), since we call on n, n/2, 
+;; n/4,...etc until we get n below the tolerance of 1.  With applicative 
+;; order, we call the first (foo f (/ n 2)), which calls (foo f (/ (/ n 2) 2))),
+;; etc.  The maximum space needed is the number of these calls, which is log(n), 
+;; since we divide by 2 every time.  Then we can erase these operations from
+;; memory, since we don't need to store them anymore.
+;; The time complexity is also (log(n)), since we have to go through log(n) 
+;; recursive function calls.  Note that we have to do it twice since we are
+;; adding the results together, but the constant out in front doesn't change
+;; the complexity.  Also, we could multiply in the constant space and time
+;; complexities by 1 for the function "f", but that also wouldn't change
+;; anything.
+  
+  
+;; Part B: Evaluation
+  
+;; Exercise B.1
+;; 1.
+;; (let ((x 20)
+;;    (y (expt 2 4)))
+;;    (* x (+ 2 y)))
+;; Desugared lambda expression:
+((lambda (x y) (* x (+ 2 y)))
+20 (expt 2 4))
+;; 2.
+;;(let ((a 1)
+;;      (b 2)
+;;      (c 3))
+;; (sqrt (- (* b b) (* 4.0 a c))))
+;; Desugared lambda expression:
+((lambda (a b c) (sqrt (- (* b b) (* 4.0 a c))))
+1 2 3)
+;; 3.
+;; (let ((x 1))
+;;  (let ((y 2))
+;;    (let ((z 3))
+;;      (* x y z))))
+;; Desugared lambda expression:
+;; ((lambda (x y z) (* x y z))
+;; 1 (lambda (y z) (2)) (lambda (z) 3))
+((lambda (x) 
+  ((lambda (y)
+    ((lambda (z)
+      (* x y z)) 3)) 2)) 1)
+;; returns 6
+
+
+;;((lambda (x (lambda (y (lambda (z))))) (* x y z))
+;;1 2 3)
+;; 4.
+;;  (let ((x 1))
+;;    (let ((x 2))
+;;      (let ((x 3))
+;;        (* x x x))))
+;; Desugared lambda expression:
+((lambda (x) 
+  ((lambda (x)
+    ((lambda (x)
+      (* x x x)) 3)) 2)) 1)
+;; note that this returns 27 since it uses the last defintion for x (which is 3)
+
+
+;; Exercise B.2
+;;(let ((x (* 2 10))
+;;      (y (+ 3 4)))
+;;  (let ((y 14))
+;;    (let ((z 22))
+;;      (* x y z))))
+;; First, desugar into lambda expressions:
+;; ((lambda (x y) 
+;;   ((lambda (y)
+;;     ((lambda (z)
+;;       (* x y z)) 22)) 14)) (* 2 10) (+ 3 4))
+;; apply:
+;;  (lambda (x y) 
+;;   ((lambda (y)
+;;     ((lambda (z)
+;;       (* x y z)) 22)) 14)) to (* 2 10) (+ 3 4)
+;; evaluate (* 2 10) -> 20
+;; evaluate (+ 3 4) -> 7
+;; substitute 20 for x, 7 for y into the 2nd-most inner expression
+;;   ((lambda (y)
+;;     ((lambda (z)
+;;       (* x y z)) 22)) 14))
+;;    apply:
+;;     (lambda (y)
+;;       ((lambda (z)
+;;         (* 20 7 z)) 22)) to 14
+;; substitute 14 for y into the inner expresion
+;;     ((lambda (z)
+;;       (* x y z)) 22))
+;;      apply:
+;;       ((lambda (z)
+;;         (* 20 14 z)) to 22
+;;   Note: Lambda shielding has taken place here. The inner defintion of y
+;;        replaced the outer definition (14 replaces 7 in this case)
+;; substitute 22 for z into (* x y z)
+;; -> (* 20 14 22)
+;; -> 6160
+
+
+;; Exercise B.3
+;; (let ((x 10)
+;;    (y (* x 2))
+;;    (z (+ y 3)))
+;; (+ x y z))
+;; Desugared lambda expression:
+;; ((lambda (x y z) (+ x y z))
+;; 10 (* x 2) (+ y 3))
+;; Note that Ben's code cannot work since the expressions get evaluated
+;; using values that exist outside the let statement.  He is trying to 
+;; use x as part of the definition for y (and y for z), even though they
+;; weren't previously defined beyond the scope of the let statement.  Therefore,
+;; lambda shielding occurs, and x and y are not correctly defined outside the 
+;; let.
+;; To fix the code:
+;; Option (1):
+ (let* ((x 10)
+    (y (* x 2))
+    (z (+ y 3)))
+ (+ x y z))
+;; Option (2):
+ (let ((x 10))
+  (let ((y (* x 2)))
+    (let ((z (+ y 3)))
+    (+ x y z))))
+ 
+ 
+;; Part C: Higher-order Procedures
+ 
+;; Exercise C.1
+;; This is an iterative function for summation.  Term is the function which is
+;; is applied to every term in the sum.  Next is a function that tells us how
+;; to get to the next term in the sum.  We use a state variable called result
+;; to make it a linear iterative process that is constant in space.
+ (define (sum term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (+ result (term a)))))
+  (iter a 0))
+ 
+;; (define (square n) (* n n)) Note: square already defined above
+(define (step1 n) (+ n 1))
+(check-expect (sum square 10 step1 0) 0)
+(check-expect (sum square 4 step1 4) 16)
+(check-expect (sum square 0 step1 10) 385)
+
+;; Exercise C.2
+
+;; Recursive definition of a product of many terms
+(define (product-rec term a next b)
+  (if (> a b)
+      1
+      (* (term a)
+         (product-rec term (next a) next b))))
+ 
+;; Iterative definition of a product of many terms.
+;; Note that it makes use of the state variable "result" so it can be 
+;; constant in space.
+ (define (product-iter term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (* result (term a)))))
+  (iter a 1))
+ 
+;; Factorial using the recursive definition of product (above)
+ (define (factorial-rec n)
+   (product-rec (lambda (x) x) 1 step1 n))
+
+;; Factorial using the iterative definition of product (above)
+ (define (factorial-iter n)
+   (product-iter (lambda (x) x) 1 step1 n))
+ 
+ ;; This gives the approximation to pi from the formula given in the book.
+ ;; We could increase the upper bound to get closer, but as shown in the book, 
+ ;; note that we can take the (1/4)*pi and bring the 4 over.  Then, just 
+ ;; calucalte each term in the series and set the last argument however many 
+ ;; terms we want to go out.  Note that we can increase this to get closer
+ ;; and closer to pi.  With 1000, we can pi = 3.1431607055322663.
+  (define (top n) ;; calcuate top half of fraction for each term
+    (+ n (if (odd? n) 1 2))) ;; avoids odd numbers on top half (2*4*4*6*6..etc)
+  (define (bottom n) ;; calculate bottom half of fraction for each term
+    (+ n (if (odd? n) 2 1))) ;; avoids even numbers on bottom half (3*3*5..etc)
+  (define (pi-term n)
+    (/ (top n) (bottom n))) ;; calculate total fraction for each term
+  (* 4.0 (product-iter pi-term 1 step1 1000))
+  ;; result: pi = 3.1431607055322663.
+ 
+(check-expect (factorial-rec  0)  1)
+(check-expect (factorial-iter 0)  1)
+(check-expect (factorial-rec  10) 3628800)
+(check-expect (factorial-iter 10) 3628800)
+ 
+(check-expect (product-rec square 4 step1 5) 400) ;; extra checks
+(check-expect (product-iter square 4 step1 5) 400)
+
+;; Exercise C.3
+;; Recursive definition for general accumulate function.
+(define (accumulate-rec combiner null-value term a next b)
+  (if (> a b)
+      null-value
+      (combiner (term a)
+         (accumulate-rec combiner null-value term (next a) next b))))
+
+(check-expect (accumulate-rec + 0 square 4 step1 5) 41) ;; sum works
+(check-expect (accumulate-rec * 1 square 4 step1 5) 400) ;; product works
+
+;; Iterative definition for general accumulate function.
+ (define (accumulate-iter combiner null-value term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (combiner result (term a)))))
+  (iter a null-value))
+ 
+(check-expect (accumulate-iter + 0 square 4 step1 5) 41) ;;  sum works
+(check-expect (accumulate-iter * 1 square 4 step1 5) 400) ;; product works
+
+;; Exercise C.4
+;; This function returns the composition of two functions f and g evaluated at 
+;; some input x. (returns f(g(x))).
+(define (compose f g)
+  (lambda (x) (f (g x))))
+  
+;; (define (square n) (* n n)) - Note: this prodedure already bound above
+(define (inc n) (+ n 1))
+(check-expect ((compose square inc) 6) 49)
+(check-expect ((compose inc square) 6) 37)
+
+;; Exercise C.5
+
+(define (g n) n) ;; define the idenity function that just returns its input.
+
+;; Iterative function to apply n repeateed applications of a function f
+;; to an input integer.
+(define (repeated f n)
+  (if (= n 0) ;; handle the n = 0 case by returning the identity function
+      g
+  (if (< n 2)
+      f
+      (compose f (repeated f (- n 1))))))
+
+;; (define (square n) (* n n)) - Note: this prodedure already bound above
+(check-expect ((repeated square 0) 6) 6)
+(check-expect ((repeated square 1) 6) 36)
+(check-expect ((repeated square 2) 6) 1296)
+
+;; Exercise C.6
+;; This function takes as its arguments a function and a step size, and
+;; returns a procedure that smooths the function by completing the average
+;; of f(x), f(x+dx), and f(x-dx) for each x.
+(define (smooth f dx)
+  (lambda (x)
+    (/ (+ (f x)
+          (f (+ x dx))
+          (f (- x dx)))
+       3)))
+
+;; Applies the smooth procedure to a function "n" times.
+(define (nsmoothed f dx n)
+  (repeated (smooth f dx) n)) ;; the new function is the smoothed version of f.
+
+
+(generate-report)

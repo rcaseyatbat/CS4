@@ -1,0 +1,489 @@
+#lang racket
+(require htdp/testing)
+
+;; Ryan Casey
+;; csman username: rcasey
+
+;; Assignment 4
+
+;; Part A: Lists
+
+;; Exercise A.1
+;; SICP 2.29
+
+;; make-mobile: branch branch -> binary-mobile
+(define (make-mobile left right)
+  (list left right))
+
+;; make-branch: int (number or binary-mobile) -> branch
+(define (make-branch length structure)
+  (list length structure))
+
+;; part (a):
+;; left-branch: binary-mobile -> branch
+(define (left-branch mobile)
+  (car mobile))
+
+;; right-branch: binary-mobile -> branch
+(define (right-branch mobile)
+  (car (cdr mobile)))
+
+;; branch-length: branch -> int
+(define (branch-length branch)
+  (car branch))
+
+;; branch-structure: branch -> (number or binary-mobile)
+(define (branch-structure branch)
+   (car (cdr branch)))
+
+;; part (b):
+;; total-weight: binary-mobile -> number
+(define (total-weight mobile)
+  (+ (branch-weight (left-branch mobile))
+     (branch-weight (right-branch mobile))))
+
+;; branch-weight: branch -> number
+(define (branch-weight branch)
+  (if (not (pair? (branch-structure branch))) ;; if number, that is the weight
+      (branch-structure branch)
+      (total-weight (branch-structure branch))))
+
+;; part (c):
+;; branch-torgue: branch -> number
+(define (branch-torque branch)
+   (* (branch-length branch) (branch-weight branch)))
+
+;; balanced?: binary-mobile -> [#t or #f]
+(define (balanced? mobile)
+   (and (= (branch-torque (left-branch mobile)) ;; top braches must be balanced
+           (branch-torque (right-branch mobile)))
+        (branch-balanced? (left-branch mobile)) ;; every sub-branch balanced
+        (branch-balanced? (right-branch mobile))))
+
+;; branch-balanced?: branch -> [#t or #f]
+(define (branch-balanced? branch)
+   (if (pair? (branch-structure branch)) ;; for a branch to be balanaced, each..
+       (balanced? (branch-structure branch))  ;; ..sub-branch must be balanced
+       #t))
+
+;; part (d):
+;; If we changed make-mobile and make-branch to use cons instead of branch, very
+;; little would need to be changed since we used accessor functions in the rest
+;; of our code through an abstraction layer.  We would just need to update the
+;; accessor functions.
+
+;; (define (make-mobile left right)
+;;    (cons left right))
+
+;; (define (make-branch length structure)
+;;    (cons length structure))
+
+;; CHANGED ACCESSORS:
+;;   left-branch: binary-mobile -> branch
+;; (define (left-branch mobile)
+;;   (car mobile))
+
+;;   right-branch: binary-mobile -> branch
+;; (define (right-branch mobile)
+;;   (cdr mobile)))    ;; use cdr now since we just have cons rather than a list
+
+;;   branch-length: branch -> int
+;; (define (branch-length branch)
+;;  (car branch))
+
+;;   branch-structure: branch -> (number or binary-mobile)
+;; (define (branch-structure branch)
+;;    (cdr branch)))   ;; use cdr now since we just have cons rather than a list
+
+(define m0
+  (make-mobile (make-branch 1 1) (make-branch 1 1)))
+
+(define m1
+  (make-mobile
+    (make-branch 3 4) 
+    (make-branch 4 
+      (make-mobile
+         (make-branch 1 2) 
+         (make-branch 2 1)))))
+
+(define m2
+  (make-mobile
+    (make-branch 1 400)
+    (make-branch 10
+      (make-mobile
+        (make-branch 100 1)
+        (make-branch 1 200)))))
+
+(check-expect (total-weight m0) 2)
+(check-expect (balanced? m0) #t)
+(check-expect (total-weight m1) 7)
+(check-expect (balanced? m1) #t)
+(check-expect (total-weight m2) 601)
+(check-expect (balanced? m2) #f)
+
+;; Exercise A.2
+;; SICP 2.30
+
+;; square-tree: tree -> tree-with-nodes-squared
+(define (square-tree tree)
+   (cond ((null? tree) null)
+         ((not (pair? tree)) (* tree tree))
+         (else (cons (square-tree (car tree)) (square-tree (cdr tree))))))
+
+;; square-tree2: tree -> tree-with-nodes-squared
+(define (square-tree2 tree)
+  (map (lambda (sub-tree)
+         (if (pair? sub-tree)
+             (square-tree sub-tree)
+             (if (null? sub-tree) null
+                  (* sub-tree sub-tree)))) tree))
+
+
+(define nil (list))
+(define a-tree (list 10 (list 20 (list 42 nil 12) nil (list 13 nil)) nil (list 1 2 3))) 
+(check-expect (square-tree nil) nil)
+(check-expect (square-tree (list 10)) (list 100)) 
+(check-expect (square-tree a-tree)
+  (list 100 (list 400 (list 1764 nil 144) nil (list 169 nil)) nil (list 1 4 9)))
+;; tests for second method with map
+(check-expect (square-tree2 nil) nil)
+(check-expect (square-tree2 (list 10)) (list 100)) 
+(check-expect (square-tree2 a-tree)
+  (list 100 (list 400 (list 1764 nil 144) nil (list 169 nil)) nil (list 1 4 9)))
+
+
+;; Exercise A.3
+;; SICP 2.31
+
+;; tree-map: (number -> number) tree -> tree-with-nodes-squared
+(define (tree-map proc tree)
+   (cond ((null? tree) null)
+          ((not (pair? tree)) (proc tree))
+          (else (cons (tree-map proc (car tree)) (tree-map proc (cdr tree))))))
+
+;; square: int -> int
+(define (square x)
+   (* x x))
+
+;; square-tree-abstract: tree -> tree-with-nodes-squared
+(define (square-tree-abstract tree)
+   (tree-map square tree))
+
+(check-expect (square-tree-abstract nil) nil)
+(check-expect (square-tree-abstract (list 10)) (list 100)) 
+(check-expect (square-tree-abstract a-tree)
+  (list 100 (list 400 (list 1764 nil 144) nil (list 169 nil)) nil (list 1 4 9)))
+
+
+;; Exercise A.4
+;; SICP 2.32
+
+;; subsets: list -> list-of-all-subsets-of-input-list [including '()]
+(define (subsets s)
+  (if (null? s) 
+      (list nil)
+      (let ((rest (subsets (cdr s))))
+        (append rest (map (lambda (x) 
+                            (cons (car s) x)) rest)))))
+
+;; This function works because we are recursively appending the car of s to the 
+;; subsets of the cdr of s each time through.  The base case is when we reach
+;; the empty list, in which case add the list () to the list of subsets.
+
+(check-expect (subsets (list)) '(())) ; note: result = list containing the empty list
+(check-expect (subsets (list 1)) '(() (1)))
+(check-expect (subsets (list 1 2 3)) '(() (3) (2) (2 3) (1) (1 3) (1 2) (1 2 3)))
+
+
+;; Exercise A.5
+;; SICP 2.33
+
+(define (accumulate op initial sequence)
+   (if (null? sequence)
+       initial
+       (op (car sequence)
+           (accumulate op initial (cdr sequence)))))
+
+(define (new-map p sequence)
+  (accumulate (lambda (x y) (cons (p x) y)) nil sequence))
+
+(define (new-append seq1 seq2)
+  (accumulate cons seq2 seq1))
+
+(define (new-length sequence)
+  (accumulate (lambda (x y) (+ 1 y)) 0 sequence))
+  
+(check-expect (new-map square (list)) (list))
+(check-expect (new-map square (list 1 2 3 4 5)) (list 1 4 9 16 25))
+(check-expect (new-append (list) (list)) (list))
+(check-expect (new-append (list 1 2 3) (list)) (list 1 2 3))
+(check-expect (new-append (list) (list 4 5 6)) (list 4 5 6))
+(check-expect (new-append (list 1 2 3) (list 4 5 6)) (list 1 2 3 4 5 6))
+(check-expect (new-length (list)) 0)
+(check-expect (new-length (list 1 2 3 4 5)) 5)
+
+
+;; Exercise A.6
+;; SICP 2.36
+
+(define (accumulate-n op init seqs)
+  (if (null? (car seqs))
+      nil
+      (cons (accumulate op init (map car seqs)) 
+                  ;; applies accumulate to first element of each sequence
+            (accumulate-n op init (map cdr seqs)))))
+                 ;; recursive call to rest of the sequence
+
+(check-expect (accumulate-n + 0 '(())) '())
+(check-expect (accumulate-n * 1 '((1 2 3 4 5) (1 1 2 6 24)))
+  '(1 2 6 24 120))
+(check-expect (accumulate-n + 0 '((1 2 3) (4 5 6) (7 8 9) (10 11 12)))
+  '(22 26 30))
+
+
+;; Exercise A.7
+;; SICP 2.37
+
+(define (dot-product v w)
+   (accumulate + 0 (map * v w)))
+
+(define (matrix-*-vector m v)
+  (map (lambda (row) 
+         (dot-product row v)) m))
+
+(define (transpose mat)
+  (accumulate-n cons null mat))
+
+(define (matrix-*-matrix m n)
+  (let ((columns (transpose n)))
+    (map (lambda (row) 
+           (matrix-*-vector columns row)) m)))
+
+(check-expect (dot-product '() '()) 0)
+(check-expect (dot-product '(1 2 3) '(4 5 6)) 32)
+(check-expect (matrix-*-vector '((1 0) (0 1)) '(10 20)) '(10 20))
+(check-expect (matrix-*-vector '((1 2) (3 4)) '(-2 3)) '(4 6))
+(check-expect (transpose '((1 2) (3 4))) '((1 3) (2 4)))
+(check-expect (transpose '((1 2 3) (4 5 6))) '((1 4) (2 5) (3 6)))
+(check-expect (matrix-*-matrix '((1 0) (0 1)) '((1 2) (3 4))) '((1 2) (3 4)))
+(check-expect (matrix-*-matrix '((1 2) (3 4)) '((1 2) (3 4))) '((7 10) (15 22)))
+(check-expect (matrix-*-matrix '((1 2 3) (4 5 6)) '((1 2) (3 4) (5 6))) 
+  '((22 28) (49 64)))
+
+
+;; Part B: Structural and Generative Recursion
+
+;; Exercise B.1
+
+;; filter: predicate list -> filtered-list
+(define (filter predicate sequence)
+  (cond ((null? sequence) nil)
+        ((predicate (car sequence))
+         (cons (car sequence)
+               (filter predicate (cdr sequence))))
+        (else (filter predicate (cdr sequence)))))
+
+;; quicksort: list -> list-sorted-in-ascending-order
+(define (quicksort lst)
+  (cond ((or (null? lst) (= (length lst) 1)) lst) 
+        ;; if the list is empty or of length 1, return the list
+    (else
+      (let ((pivot (car lst)))
+        (append (quicksort (filter (lambda (x) (< x pivot)) (cdr lst)))  
+                      ;; get all elements less than pivot
+                (list pivot)  
+                      ;; get all elements equal to pivot
+                (quicksort (filter (lambda (x) (>= x pivot)) (cdr lst)))))))) 
+                      ;; get all elements greater than pivot
+
+
+(check-expect (quicksort '()) '())
+(check-expect (quicksort '(1)) '(1))
+(check-expect (quicksort '(1 2 3 4 5)) '(1 2 3 4 5))
+(check-expect (quicksort '(5 4 3 2 1 1 2 3 4 5)) '(1 1 2 2 3 3 4 4 5 5))
+
+;; Exercise B.2
+;; This implementation of quicksort is an example of generative recursion 
+;; because we are not altering the input list to get to the base case.
+;; Instead, we are creating a new list that is returned sorted.  When we apply
+;; the filter function, we are actually generating two new lists of our own, and 
+;; we are not affecting the given list.  Therefore, it is generative recursion
+;; because we are recursing on subparts of data that we generate.
+
+;; Exercise B.3
+
+;; (define (merge-sort a-list) 
+;;   (if (null? a-list)        ; only base case: empty list
+;;       a-list
+;;       (let ((c1 (even-half a-list)) 
+;;             (c2 (odd-half a-list)))
+;;          (merge-in-order (merge-sort c1) 
+;;                          (merge-sort c2)))))
+
+;; This code doesn't work because if the given input list is not null, we never
+;; actually get down to a null list.  We only ever get down to lists of length
+;; one, which we can compare and put in order with 
+;; (goes-before? (car alist) (car blist)).  Note that when do the merge in 
+;; merge-sort by combining the two halves of the original list, there is no way
+;; we can divide and conquer to get a list of length 0.  By dividing the list
+;; into subgroups, we can get at minimum lists of length 1, so that is why the 
+;; 1 element base case is needed, as we will never reach the null list base 
+;; case for any input list besides (list).
+
+;; Helper procedures:
+;; insert-in-order: int list -> list-with-int-in-correct-place
+(define (insert-in-order new-result a-list) 
+  (cond ((null? a-list)
+         (cons new-result a-list)) 
+        ((goes-before? new-result (car a-list)) 
+         (cons new-result a-list))
+        (else (cons (car a-list) 
+         (insert-in-order new-result (cdr a-list))))))
+
+;; goes-before: int int -> [#t or #f]
+(define (goes-before? r1 r2) (< r1 r2))  ; ascending order
+
+;; The insertion sort function itself:
+;; insertion-sort: list -> sorted-list
+(define (insertion-sort a-list)
+     (if (null? a-list)
+         a-list
+         (insert-in-order (car a-list) (insertion-sort (cdr a-list)))))
+
+(check-expect (insertion-sort (list 9 8 3 2)) (list 2 3 8 9))
+(check-expect (insertion-sort (list 19 4 -2 0)) (list -2 0 4 19))
+(check-expect (insertion-sort (list)) (list))
+
+
+;; Part C: Quoting
+
+;; Exercise C.1
+;; SICP 2.55
+
+;; (car ''abracadabra)
+;;   -> (car (quote (quote abracadabra)))
+;;  Note that this is equivalnt to 
+;;      -> (car '(quote abracadabra))
+;;  Note that car of a quoted list simply returns the first symbol of the list
+;;         -> quote
+;; (which is equivalent to 'quote as printed in the interpreter)
+
+
+;; Exercise C.2
+;; SICP 2.56
+
+;; exponentiation?: expression -> [#t or #f]
+(define (exponentiation? x)
+  (and (pair? x) (eq? (car x) '**)))
+
+;; expressions will be written in the form (** x y), representing x^y
+;; where the first item in the list is ** for exponentiation
+;; the second item in the list is the base (2nd item = cadr)
+;; the third item in the list is the exponent (3rd item = caddr)
+
+;; base: expression -> int
+;;   (where expression is of the form (** x y) representing x^y
+(define (base x) 
+  (car (cdr x)))
+
+;; exponent: expression -> int
+;;   (where expression is of the form (** x y) representing x^y
+(define (exponent x) 
+  (car (cdr (cdr x))))
+
+;; make-exponentiation: int int -> expression
+;;   (where expression is of the form (** x y) representing x^y
+(define (make-exponentiation base exponent)
+  (cond ((=number? exponent 0) 1)
+        ((=number? exponent 1) base)
+        ((and (number? base) (number? exponent)) (expt base exponent))
+        (else (list '** base exponent))))
+
+(check-expect (deriv 10 'x) 0)
+(check-expect (deriv 'x 'x) 1)
+(check-expect (deriv '(** y 1) 'x) 0)
+(check-expect (deriv '(** x 1) 'x) 1)
+(check-expect (deriv '(** x 2) 'x) '(* 2 x))
+(check-expect (deriv '(** (* 3 x) 3) 'x) '(* (* 3 (** (* 3 x) 2)) 3))
+(check-expect (deriv '(+ (* 4 (** x 3)) (* 6 (** x 2))) 'x)
+  '(+ (* 4 (* 3 (** x 2))) (* 6 (* 2 x))))
+
+;;;; CODE FROM CHAPTER 2 OF STRUCTURE AND INTERPRETATION OF COMPUTER PROGRAMS
+
+;;; Examples from the book are commented out with ;; so that they
+;;;  are easy to find, and so that they will be omitted if you evaluate a
+;;;  chunk of the file (programs with intervening examples) in Scheme.
+
+;;; SECTION 2.3.2
+
+;; derive: expression variable-to-differerniate-w.r.t. -> expression
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp)
+         (if (same-variable? exp var) 1 0))
+        ((sum? exp)
+         (make-sum (deriv (addend exp) var)
+                   (deriv (augend exp) var)))
+        ((product? exp)
+         (make-sum
+           (make-product (multiplier exp)
+                         (deriv (multiplicand exp) var))
+           (make-product (deriv (multiplier exp) var)
+                         (multiplicand exp))))
+        ;; Added exponentiation implementation for derivative function
+        ((exponentiation? exp)
+         (make-product
+          (make-product (exponent exp)
+                        (make-exponentiation (base exp) 
+                                             (make-sum (exponent exp) -1)))
+                            ;; take deriavative by decreasing the exponent by 1
+          (deriv (base exp) var))) ;; chain rule
+        (else
+         (error "unknown expression type -- DERIV" exp))))
+
+;; representing algebraic expressions
+
+(define (variable? x) (symbol? x))
+
+(define (same-variable? v1 v2)
+  (and (variable? v1) (variable? v2) (eq? v1 v2)))
+
+;(define (make-sum a1 a2) (list '+ a1 a2))
+
+;(define (make-product m1 m2) (list '* m1 m2))
+
+(define (sum? x)
+  (and (pair? x) (eq? (car x) '+)))
+
+(define (addend s) (cadr s))
+
+(define (augend s) (caddr s))
+
+(define (product? x)
+  (and (pair? x) (eq? (car x) '*)))
+
+(define (multiplier p) (cadr p))
+
+(define (multiplicand p) (caddr p))
+
+;; With simplification
+
+(define (make-sum a1 a2)
+  (cond ((=number? a1 0) a2)
+        ((=number? a2 0) a1)
+        ((and (number? a1) (number? a2)) (+ a1 a2))
+        (else (list '+ a1 a2))))
+
+(define (=number? exp num)
+  (and (number? exp) (= exp num)))
+
+(define (make-product m1 m2)
+  (cond ((or (=number? m1 0) (=number? m2 0)) 0)
+        ((=number? m1 1) m2)
+        ((=number? m2 1) m1)
+        ((and (number? m1) (number? m2)) (* m1 m2))
+        (else (list '* m1 m2))))
+
+
+
+(generate-report)
